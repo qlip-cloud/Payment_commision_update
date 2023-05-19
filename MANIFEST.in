@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include payment_commision_update *.css
+recursive-include payment_commision_update *.csv
+recursive-include payment_commision_update *.html
+recursive-include payment_commision_update *.ico
+recursive-include payment_commision_update *.js
+recursive-include payment_commision_update *.json
+recursive-include payment_commision_update *.md
+recursive-include payment_commision_update *.png
+recursive-include payment_commision_update *.py
+recursive-include payment_commision_update *.svg
+recursive-include payment_commision_update *.txt
+recursive-exclude payment_commision_update *.pyc
