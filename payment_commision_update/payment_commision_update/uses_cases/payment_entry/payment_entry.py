@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.utils.background_jobs import get_jobs
-from frappe.utils import flt
+from frappe.utils import flt, cint
 
 
 @frappe.whitelist()
@@ -39,10 +39,11 @@ def create_entries_preview(data):
     # TODO: Consultar entradas de pagos a procesar
 
     pe_list = frappe.db.sql_list("""
-        select name
-        from `tabPayment Entry`
-        where party_type = 'Customer' and payment_type = 'Receive' and docstatus = '1'
-        and (qp_commission is not null or qp_commission != '') and qp_processed = '0' and company = '{0}'
+        select pe.name
+        from `tabPayment Entry` as pe
+        inner join  `tabSales Taxes and Charges Template` as templ on pe.qp_commission = templ.name
+        where pe.party_type = 'Customer' and pe.payment_type = 'Receive' and pe.docstatus = '1'
+        and pe.qp_processed = '0' and pe.company = '{0}'
     """.format(data))
 
     for rec in pe_list:
@@ -57,6 +58,8 @@ def create_entry_from_payment(rec):
 
         # TODO: evaluar caso de multi currency entre pago y factura
         acum_amount = 0.0
+
+        float_precision = cint(frappe.db.get_default("float_precision")) or 2
 
         doc = frappe.get_doc("Payment Entry", rec)
 
@@ -82,7 +85,7 @@ def create_entry_from_payment(rec):
             doc_invoice = frappe.get_doc("Sales Invoice", doc_ref.reference_name)
 
             # Calcular proporción
-            proportion = flt(((doc.paid_amount * 100) / doc_invoice.rounded_total) / 100)
+            proportion = flt(doc.paid_amount / doc_invoice.rounded_total)
 
             payment_tax = frappe.get_doc("Sales Taxes and Charges Template", doc.qp_commission)
 
@@ -94,33 +97,36 @@ def create_entry_from_payment(rec):
 
                 if tax_det.qp_amount_to_calculate == 'Total before tax':
 
-                    calc_amount = flt(doc_invoice.total * proportion * tax_factor)
+                    calc_amount = flt(doc_invoice.total * proportion * tax_factor, float_precision)
 
                 elif tax_det.qp_amount_to_calculate == 'Tax':
 
-                    calc_amount = flt(doc_invoice.total_taxes_and_charges * proportion * tax_factor)
+                    calc_amount = flt(doc_invoice.total_taxes_and_charges * proportion * tax_factor, float_precision)
 
                 elif tax_det.qp_amount_to_calculate == 'Total after tax':
 
-                    calc_amount = flt(doc_invoice.rounded_total * proportion * tax_factor)
+                    calc_amount = flt(doc_invoice.rounded_total * proportion * tax_factor, float_precision)
 
                 elif tax_det.qp_amount_to_calculate == 'Payment Value':
 
-                    calc_amount = flt(doc.paid_amount * proportion * tax_factor)
+                    calc_amount = flt(doc.paid_amount * proportion * tax_factor, float_precision)
 
                 else:
 
                     continue
 
-                acum_amount += calc_amount
+                if calc_amount > 0.00:
 
+                    acum_amount += calc_amount
 
-                preview.append("accounts", {
-                    "account": tax_det.account_head,
-                    "cost_center": tax_det.cost_center,
-                    "debit": calc_amount,
-                    "credit": 0.00
-                })
+                    preview.append("accounts", {
+                        "account": tax_det.account_head,
+                        "cost_center": tax_det.cost_center,
+                        "debit": calc_amount,
+                        "credit": 0.00,
+                        "rate": tax_det.rate,
+                        "ref_amount_to_calculate": tax_det.qp_amount_to_calculate
+                    })
 
         if preview.get('accounts', False) and acum_amount > 0.00:
             # Calcular total e intertar contrapartida
@@ -138,7 +144,7 @@ def create_entry_from_payment(rec):
         elif preview.get('accounts', False) and not acum_amount > 0.00:
 
             frappe.throw(_("Amounts to zero - Paymen Entry: {0}".format(doc.name)))
-        
+
         preview.insert()
 
         preview.submit()
