@@ -9,7 +9,9 @@
   "account",
   "cost_center",
   "debit",
-  "credit"
+  "credit",
+  "rate",
+  "ref_amount_to_calculate"
  ],
  "fields": [
   {
@@ -52,12 +54,22 @@
    "in_list_view": 1,
    "label": "Credit",
    "print_hide_if_no_value": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Float",
+   "label": "rate"
+  },
+  {
+   "fieldname": "ref_amount_to_calculate",
+   "fieldtype": "Data",
+   "label": "Reference Amount to Calculate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-06-01 17:23:40.224979",
+ "modified": "2023-06-07 09:30:48.870421",
  "modified_by": "Administrator",
  "module": "Payment Commision Update",
  "name": "qp_Entries_Preview_Detail",
