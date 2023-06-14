@@ -22,12 +22,16 @@ class qp_Entries_Preview(Document):
 			jv.company = self.company
 			jv.posting_date = self.posting_date
 
+			party_type_prev, party_prev = self.get_party_from_payment(self.payment_entry_name)
+
 			for acc in self.accounts:
 				jv.append("accounts", {
 					"account": acc.account,
 					"cost_center": acc.cost_center,
 					"debit_in_account_currency": acc.debit,
-					"credit_in_account_currency": acc.credit
+					"credit_in_account_currency": acc.credit,
+					"party_type": party_type_prev,
+					"party": party_prev
 				})
 
 			jv.insert()
@@ -47,3 +51,9 @@ class qp_Entries_Preview(Document):
 	def on_trash(self):
 		
 		frappe.throw(_("Records not allowed to be deleted"))
+
+	def get_party_from_payment(self, payment_entry_name):
+
+		doc = frappe.get_doc("Payment Entry", payment_entry_name)
+
+		return doc.party_type, doc.party
